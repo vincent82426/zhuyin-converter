@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>注音亂碼雙向轉換工具 (純淨版)</title>
+    <title>注音亂碼雙向轉換工具 (手感完美版)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.18.2/dist/index.js"></script>
 
@@ -18,7 +18,7 @@
         .btn-to-zh:hover { background-color: #3367D6; }
         .btn-to-en { background-color: #EA4335; }
         .btn-to-en:hover { background-color: #C5221F; }
-        .result-box { padding: 15px; border-radius: 5px; font-size: 18px; color: #333; min-height: 24px; margin-bottom: 10px; word-wrap: break-word;}
+        .result-box { padding: 15px; border-radius: 5px; font-size: 18px; color: #333; min-height: 24px; margin-bottom: 10px; word-wrap: break-word; white-space: pre-wrap; /* 確保空白鍵能正常顯示 */ }
         .box-zh { background-color: #e8f0fe; border-left: 5px solid #4285F4; }
         .box-en { background-color: #fce8e6; border-left: 5px solid #EA4335; }
         .note { font-size: 13px; color: #666; background-color: #fff3cd; padding: 10px; border-radius: 5px; border-left: 3px solid #ffc107; line-height: 1.5;}
@@ -33,17 +33,16 @@
     <textarea id="inputEn" placeholder="輸入英文亂碼 (例：su3cl3)"></textarea>
     <button class="btn-to-zh" onclick="toZhuyin()">還原成注音！</button>
     <div class="result-box box-zh" id="outputZh">...</div>
-    <p class="note">💡 提示：將鍵盤代碼直接轉回注音，最原汁原味，不怕同音字猜錯！</p>
     
     <h2>2. 想打火星文？ (中文 ➔ 英文)</h2>
     <textarea id="inputZh" placeholder="輸入一段中文 (例：我騎自行車去銀行)"></textarea>
     <button class="btn-to-en" onclick="toEnglish()">產生鍵盤密碼！</button>
     <div class="result-box box-en" id="outputEn">...</div>
-    <p class="note">🚀 狀態：已載入 pinyin-pro 引擎，支援破音字自動判斷！</p>
+    <p class="note">🚀 狀態：已修復一聲(空白鍵)邏輯，字與字無縫接軌！</p>
 </div>
 
 <script>
-    // 1. 鍵盤對應表 (英文 -> 注音)
+    // ================= 功能一：英文轉注音 =================
     const zhuyinMap = {
         '1':'ㄅ', 'q':'ㄆ', 'a':'ㄇ', 'z':'ㄈ', '2':'ㄉ', 'w':'ㄊ', 's':'ㄋ', 'x':'ㄌ',
         '3':'ˇ', 'e':'ㄍ', 'd':'ㄎ', 'c':'ㄏ', '4':'ˋ', 'r':'ㄐ', 'f':'ㄑ', 'v':'ㄒ',
@@ -53,48 +52,100 @@
         '-':'ㄦ', ' ':' ' 
     };
 
-    // 2. 產生反向對應表 (注音 -> 英文)
-    const reverseZhuyinMap = {};
-    for (let key in zhuyinMap) {
-        reverseZhuyinMap[zhuyinMap[key]] = key;
-    }
-
-    // ================= 功能區塊 =================
-
-    // 功能一：英文轉注音 (最一開始的純粹轉換)
     function toZhuyin() {
         const input = document.getElementById('inputEn').value.toLowerCase();
         let zhuyinStr = '';
-        
-        // 逐字元對應
         for (let char of input) {
-            zhuyinStr += zhuyinMap[char] || char; // 找不到就保留原樣(如標點符號)
+            zhuyinStr += zhuyinMap[char] || char; 
         }
-
         document.getElementById('outputZh').innerText = zhuyinStr || '...';
     }
 
-    // 功能二：中文轉英文 (導入 pinyin-pro 黑科技)
+
+    // ================= 功能二：中文轉英文 (火星文) =================
     function toEnglish() {
         const input = document.getElementById('inputZh').value;
         if (!input) return;
 
-        // 提取套件功能
         const { pinyin } = pinyinPro;
         
-        // 步驟一：呼叫套件，將中文精準轉成注音陣列
-        const zhuyinArray = pinyin(input, { type: 'array', type: 'bopomofo', nonZh: 'consecutive' });
+        // 呼叫套件，將中文轉成「帶數字音調」的拼音陣列 (例如：['wo3', 'qi2', 'zi4', 'xing2', 'che1'])
+        const pinyinArray = pinyin(input, { type: 'array', toneType: 'num', nonZh: 'consecutive' });
         
-        // 將陣列接合成字串
-        const zhuyinStr = zhuyinArray.join('');
-
-        // 步驟二：將注音轉成英文字母 (查反向鍵盤表)
         let englishStr = '';
-        for (let char of zhuyinStr) {
-            englishStr += reverseZhuyinMap[char] || char;
+        for (let pyStr of pinyinArray) {
+            englishStr += pinyinToKeyboard(pyStr);
         }
 
         document.getElementById('outputEn').innerText = englishStr || '...';
+    }
+
+    // 🔥 核心引擎：羅馬拼音 ➔ 大千式鍵盤代碼轉換器
+    function pinyinToKeyboard(pinyinStr) {
+        // 【重要修改】嚴格捕捉「字母+數字音調」，確保不會誤配對到英文單字或標點符號
+        let match = pinyinStr.match(/^([a-zü]+)(\d)$/i);
+        if (!match) return pinyinStr; // 標點符號、英文或空格，直接原樣保留
+
+        let py = match[1].toLowerCase().replace(/ü/g, 'v');
+        let tone = match[2];
+
+        // 【重要修改】將 1 聲對應到空白鍵 (' ')
+        const toneMap = { '1': ' ', '2': '6', '3': '3', '4': '4', '5': '7', '0': '7' };
+        let kbTone = toneMap[tone] || '';
+
+        // 處理拼音特例 (j, q, x 後面接 u 其實是 ü 的音)
+        if (py.match(/^[jqx]u/)) py = py.replace('u', 'v');
+
+        // 處理 y, w 開頭的省略寫法
+        if (py === 'yi') py = 'i';
+        else if (py === 'yin') py = 'in';
+        else if (py === 'ying') py = 'ing';
+        else if (py.startsWith('yu')) py = py.replace('yu', 'v');
+        else if (py.startsWith('y')) py = py.replace('y', 'i');
+
+        if (py === 'wu') py = 'u';
+        else if (py === 'weng') py = 'ueng';
+        else if (py.startsWith('w')) py = py.replace('w', 'u');
+
+        // 處理拼音省略的韻母
+        if (py.match(/un$/)) py = py.replace(/un$/, 'uen');
+        py = py.replace(/ui$/, 'uei').replace(/iu$/, 'iou');
+
+        // 拆解聲母與韻母
+        let initial = '';
+        let final = py;
+        const initials = ['zh', 'ch', 'sh', 'b', 'p', 'm', 'f', 'd', 't', 'n', 'l', 'g', 'k', 'h', 'j', 'q', 'x', 'r', 'z', 'c', 's'];
+        for (let i of initials) {
+            if (py.startsWith(i)) {
+                initial = i;
+                final = py.substring(i.length);
+                break;
+            }
+        }
+
+        // ㄓㄔㄕㄖㄗㄘㄙ 單獨存在時
+        if (['zh', 'ch', 'sh', 'r', 'z', 'c', 's'].includes(initial) && final === 'i') final = '';
+
+        // 最終鍵盤按鍵對應
+        const iMap = {
+            'b':'1', 'p':'q', 'm':'a', 'f':'z', 'd':'2', 't':'w', 'n':'s', 'l':'x',
+            'g':'e', 'k':'d', 'h':'c', 'j':'r', 'q':'f', 'x':'v',
+            'zh':'5', 'ch':'t', 'sh':'g', 'r':'b', 'z':'y', 'c':'h', 's':'n'
+        };
+
+        const fMap = {
+            'a':'8', 'o':'i', 'e':'k', 'ea':'k', 'ai':'9', 'ei':'o', 'ao':'l', 'ou':'.',
+            'an':'0', 'en':'p', 'ang':';', 'eng':'/', 'er':'-',
+            'i':'u', 'ia':'u8', 'ie':'u,', 'iao':'ul', 'iou':'u.', 'ian':'u0', 'in':'up', 'iang':'u;', 'ing':'u/', 
+            'u':'j', 'ua':'j8', 'uo':'ji', 'uai':'j9', 'uei':'jo', 'uan':'j0', 'uen':'jp', 'uang':'j;', 'ueng':'j/', 'ong':'j/',
+            'v':'m', 've':'m,', 'ue':'m,', 'van':'m0', 'vn':'mp', 'iong':'m/'
+        };
+
+        let kbInitial = initial ? iMap[initial] : '';
+        let kbFinal = final ? (fMap[final] || final) : '';
+
+        // 組合：聲母 + 韻母 + 音調(包含一聲的空白)
+        return kbInitial + kbFinal + kbTone;
     }
 </script>
 
