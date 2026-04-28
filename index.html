@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>注音亂碼雙向轉換工具</title>
+    <title>注音亂碼雙向轉換工具 (純淨版)</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.18.2/dist/index.js"></script>
+
     <style>
         body { font-family: 'Microsoft JhengHei', sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; padding: 20px; margin: 0; }
         .container { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
@@ -18,7 +21,7 @@
         .result-box { padding: 15px; border-radius: 5px; font-size: 18px; color: #333; min-height: 24px; margin-bottom: 10px; word-wrap: break-word;}
         .box-zh { background-color: #e8f0fe; border-left: 5px solid #4285F4; }
         .box-en { background-color: #fce8e6; border-left: 5px solid #EA4335; }
-        .note { font-size: 13px; color: #666; background-color: #fff3cd; padding: 10px; border-radius: 5px; border-left: 3px solid #ffc107;}
+        .note { font-size: 13px; color: #666; background-color: #fff3cd; padding: 10px; border-radius: 5px; border-left: 3px solid #ffc107; line-height: 1.5;}
     </style>
 </head>
 <body>
@@ -26,17 +29,17 @@
 <div class="container">
     <h1>🇹🇼 鍵盤密碼雙向轉換器</h1>
     
-    <h2>1. 忘記切中文？ (英文 ➔ 中文)</h2>
+    <h2>1. 忘記切輸入法？ (英文 ➔ 注音)</h2>
     <textarea id="inputEn" placeholder="輸入英文亂碼 (例：su3cl3)"></textarea>
-    <button class="btn-to-zh" onclick="toChinese()">轉換成中文！</button>
+    <button class="btn-to-zh" onclick="toZhuyin()">還原成注音！</button>
     <div class="result-box box-zh" id="outputZh">...</div>
+    <p class="note">💡 提示：將鍵盤代碼直接轉回注音，最原汁原味，不怕同音字猜錯！</p>
     
     <h2>2. 想打火星文？ (中文 ➔ 英文)</h2>
-    <textarea id="inputZh" placeholder="輸入中文 (例：你好)"></textarea>
+    <textarea id="inputZh" placeholder="輸入一段中文 (例：我騎自行車去銀行)"></textarea>
     <button class="btn-to-en" onclick="toEnglish()">產生鍵盤密碼！</button>
     <div class="result-box box-en" id="outputEn">...</div>
-
-    <p class="note">💡 提示：如果「中轉英」沒有成功變成英文字母，是因為該中文字還沒加進程式碼的「迷你詞庫」中喔！</p>
+    <p class="note">🚀 狀態：已載入 pinyin-pro 引擎，支援破音字自動判斷！</p>
 </div>
 
 <script>
@@ -50,55 +53,40 @@
         '-':'ㄦ', ' ':' ' 
     };
 
-    // 產生反向對應表 (注音 -> 英文)
+    // 2. 產生反向對應表 (注音 -> 英文)
     const reverseZhuyinMap = {};
     for (let key in zhuyinMap) {
         reverseZhuyinMap[zhuyinMap[key]] = key;
     }
 
-    // 2. 自訂迷你詞庫 (注音 -> 中文)
-    const dictionary = {
-        'ㄋㄧˇㄏㄠˇ': '你好', 'ㄨㄛˇㄞˋㄋㄧˇ': '我愛你', 'ㄒㄧㄝˋㄒㄧㄝˋ': '謝謝',
-        'ㄉㄨㄟˋㄅㄨˋㄑㄧˇ': '對不起', 'ㄊㄞˊㄨㄢ': '台灣', 'ㄏㄠˇㄒㄧㄠˋ': '好笑',
-        'ㄨㄛˇ': '我', 'ㄋㄧˇ': '你', 'ㄊㄚ': '他', 'ㄕˋ': '是', 'ㄉㄜ˙': '的', 
-        'ㄌㄜ˙': '了', 'ㄅㄨˋ': '不', 'ㄏㄠˇ': '好', 'ㄧㄡˇ': '有', 'ㄇㄚ˙': '嗎'
-    };
+    // ================= 功能區塊 =================
 
-    // 產生反向詞庫 (中文 -> 注音)
-    const reverseDictionary = {};
-    for (let key in dictionary) {
-        reverseDictionary[dictionary[key]] = key;
-    }
-
-    // 功能一：英文轉中文
-    function toChinese() {
+    // 功能一：英文轉注音 (最一開始的純粹轉換)
+    function toZhuyin() {
         const input = document.getElementById('inputEn').value.toLowerCase();
         let zhuyinStr = '';
         
-        // 轉注音
+        // 逐字元對應
         for (let char of input) {
-            zhuyinStr += zhuyinMap[char] || char;
+            zhuyinStr += zhuyinMap[char] || char; // 找不到就保留原樣(如標點符號)
         }
 
-        // 轉中文
-        let chineseStr = zhuyinStr;
-        const sortedKeys = Object.keys(dictionary).sort((a, b) => b.length - a.length);
-        for (let key of sortedKeys) {
-            chineseStr = chineseStr.split(key).join(dictionary[key]); // 替換全部
-        }
-        document.getElementById('outputZh').innerText = chineseStr || '...';
+        document.getElementById('outputZh').innerText = zhuyinStr || '...';
     }
 
-    // 功能二：中文轉英文 (火星文)
+    // 功能二：中文轉英文 (導入 pinyin-pro 黑科技)
     function toEnglish() {
-        let input = document.getElementById('inputZh').value;
+        const input = document.getElementById('inputZh').value;
+        if (!input) return;
+
+        // 提取套件功能
+        const { pinyin } = pinyinPro;
         
-        // 步驟一：先將中文轉成注音 (查反向詞庫)
-        let zhuyinStr = input;
-        const sortedWords = Object.keys(reverseDictionary).sort((a, b) => b.length - a.length);
-        for (let word of sortedWords) {
-            zhuyinStr = zhuyinStr.split(word).join(reverseDictionary[word]);
-        }
+        // 步驟一：呼叫套件，將中文精準轉成注音陣列
+        const zhuyinArray = pinyin(input, { type: 'array', type: 'bopomofo', nonZh: 'consecutive' });
+        
+        // 將陣列接合成字串
+        const zhuyinStr = zhuyinArray.join('');
 
         // 步驟二：將注音轉成英文字母 (查反向鍵盤表)
         let englishStr = '';
